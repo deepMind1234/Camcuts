@@ -1,0 +1,53 @@
+{
+    "gestures": {
+        "FIST": {
+            "type": "keystroke",
+            "command": "k",
+            "description": "Play/Pause",
+            "hold_duration": 0.8,
+            "cooldown": 1.5
+        },
+        "OPEN_PALM": {
+            "type": "keystroke",
+            "command": "f",
+            "description": "Full Screen",
+            "hold_duration": 1.2,
+            "cooldown": 2.0
+        },
+        "INDEX_UP": {
+            "type": "keystroke",
+            "command": "Page_Up",
+            "behavior": "cycle",
+            "description": "Scroll Up",
+            "hold_duration": 0.5,
+            "cooldown": 0.1
+        },
+        "INDEX_DOWN": {
+            "type": "keystroke",
+            "command": "Page_Down",
+            "behavior": "cycle",
+            "description": "Scroll Down",
+            "hold_duration": 0.5,
+            "cooldown": 0.1
+        },
+        "MOUTH_OPEN": {
+            "type": "keystroke",
+            "command": "Up",
+            "behavior": "cycle",
+            "description": "Volume Up",
+            "hold_duration": 2.0,
+            "cooldown": 1.0
+        },
+        "HANDS_X": {
+            "type": "app",
+            "command": "quit",
+            "description": "Terminate",
+            "hold_duration": 1.5,
+            "cooldown": 0
+        }
+    },
+    "settings": {
+        "confidence_threshold": 0.85,
+        "cycle_interval": 0.2
+    }
+}
