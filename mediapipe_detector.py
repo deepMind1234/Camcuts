@@ -67,76 +67,69 @@ class MediaPipeDetector(BaseDetector):
         return detections
 
     def _recognize_hand_gesture(self, hand_landmarks) -> str:
-        # Landmark indices
-        # Index: 5(mcp), 6(pip), 8(tip)
-        # Middle: 9(mcp), 10(pip), 12(tip)
-        # Ring: 13(mcp), 14(pip), 16(tip)
-        # Pinky: 17(mcp), 18(pip), 20(tip)
-        # Wrist: 0
-
-        def is_extended_up(mcp, pip, tip):
-            # Tip must be significantly above pip AND pip above mcp
-            return tip.y < pip.y - 0.04 and pip.y < mcp.y - 0.01
-            
-        def is_extended_down(mcp, pip, tip):
-            # Tip must be significantly below pip AND pip below mcp
-            return tip.y > pip.y + 0.05 and pip.y > mcp.y + 0.01
-
-        def is_curled(mcp, pip, tip):
-            # Distance from tip to wrist or MCP is small
-            return abs(tip.y - mcp.y) < 0.04
-            
-        def is_tightly_curled(mcp, pip, tip):
-            # Even more strict for ensuring a finger is totally closed
-            return abs(tip.y - mcp.y) < 0.03
-
-        # Check states for each finger
-        f_index_up = is_extended_up(hand_landmarks.landmark[5], hand_landmarks.landmark[6], hand_landmarks.landmark[8])
-        f_index_down = is_extended_down(hand_landmarks.landmark[5], hand_landmarks.landmark[6], hand_landmarks.landmark[8])
+        # Simple definition of "Open" vs "Closed"
+        # Finger is OPEN if Tip [8, 12, 16, 20] is above Pip [6, 10, 14, 18]
+        # In MediaPipe, lower Y is higher on the screen.
         
-        # Check others for extension/tight curl
-        others_extended = []
-        for m, p, t in [(9, 10, 12), (13, 14, 16), (17, 18, 20)]:
-            others_extended.append(is_extended_up(hand_landmarks.landmark[m], hand_landmarks.landmark[p], hand_landmarks.landmark[t]))
-        
-        others_tightly_curled = []
-        for m, p, t in [(9, 10, 12), (13, 14, 16), (17, 18, 20)]:
-            others_tightly_curled.append(is_tightly_curled(hand_landmarks.landmark[m], hand_landmarks.landmark[p], hand_landmarks.landmark[t]))
+        tips = [8, 12, 16, 20]
+        pips = [6, 10, 14, 18]
+        is_open = []
+        for tip, pip in zip(tips, pips):
+            is_open.append(hand_landmarks.landmark[tip].y < hand_landmarks.landmark[pip].y)
 
-        # --- GESTURE LOGIC (STRICT) ---
-        
-        # 1. INDEX_UP: Index is up, others are TIGHTLY curled
-        if f_index_up and all(others_tightly_curled):
-            return "INDEX_UP"
-            
-        # 2. INDEX_DOWN: Index is down, others are TIGHTLY curled
-        if f_index_down and all(others_tightly_curled):
-            return "INDEX_DOWN"
-            
-        # 3. OPEN_PALM: All 4 fingers are extended up (and thumb is outside)
-        if f_index_up and all(others_extended):
+        # 1. OPEN_PALM: All 4 major fingers are open
+        if all(is_open):
             return "OPEN_PALM"
             
-        # 4. FIST: All fingers (including index) are curled
-        index_curled = is_curled(hand_landmarks.landmark[5], hand_landmarks.landmark[6], hand_landmarks.landmark[8])
-        if index_curled and all(others_tightly_curled):
-            return "FIST"
+        # 2. FIST vs INDEX_DOWN: All 4 major fingers are closed
+        if not any(is_open):
+            # Special check for INDEX_DOWN vs FIST
+            idx_tip = hand_landmarks.landmark[8]
+            idx_pip = hand_landmarks.landmark[6]
+            idx_mcp = hand_landmarks.landmark[5]
+            
+            # Index is down only if tip [8] is VERY clearly BELOW pip [6]
+            # Increasing threshold from 0.05 to 0.1 for more deliberate pointing
+            if idx_tip.y > idx_pip.y + 0.1:
+                return "INDEX_DOWN"
+            
+            # Confirm FIST by checking if index tip is close to MCP (tucked in)
+            if abs(idx_tip.y - idx_mcp.y) < 0.05:
+                return "FIST"
+            
+            # If it's ambiguous, return None to avoid misfiring
+            return None
+            
+        # 3. INDEX_UP / INDEX_LEFT / INDEX_RIGHT: Only index is open
+        if is_open[0] and not any(is_open[1:]):
+            idx_tip = hand_landmarks.landmark[8]
+            idx_mcp = hand_landmarks.landmark[5]
+            
+            # Check horizontal vs vertical dominance
+            dx = idx_tip.x - idx_mcp.x
+            dy = idx_tip.y - idx_mcp.y
+            
+            if abs(dx) > abs(dy) * 1.5: # Horizontally dominant
+                if dx < -0.1: return "INDEX_LEFT"
+                if dx > 0.1: return "INDEX_RIGHT"
+            
+            # Fallback to INDEX_UP if vertical and tip is above pip
+            if idx_tip.y < hand_landmarks.landmark[6].y:
+                return "INDEX_UP"
+                
+        # 4. PEACE: Index and Middle are open, others are closed
+        if is_open[0] and is_open[1] and not is_open[2] and not is_open[3]:
+            return "PEACE"
 
         return None
 
     def _recognize_face_gestures_multi(self, face_landmarks) -> List[str]:
         gestures = []
         
-        # Mouth Open: deliberate wide opening
+        # Simple Mouth Open check
         upper_lip = face_landmarks.landmark[13]
         lower_lip = face_landmarks.landmark[14]
-        # Nose to Chin distance for scale neutralization
-        nose = face_landmarks.landmark[1]
-        chin = face_landmarks.landmark[152]
-        face_scale = abs(nose.y - chin.y)
-        
-        mouth_dist = abs(upper_lip.y - lower_lip.y)
-        if mouth_dist > 0.4 * face_scale: # Proportional check
+        if abs(upper_lip.y - lower_lip.y) > 0.06:
             gestures.append("MOUTH_OPEN")
         
         return gestures

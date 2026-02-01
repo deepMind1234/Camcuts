@@ -91,8 +91,9 @@ class CamcutsApp:
             cv2.putText(frame, "Target: Auto-detecting", (50, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
         if self.logic.current_symbol:
-            # Dynamically calculate progress based on the required duration for this gesture
-            required = self.logic.durations.get(self.logic.current_symbol, self.logic.default_duration)
+            # Fetch duration from ACTION_MAP (config) or fallback to default
+            action_cfg = ACTION_MAP.get(self.logic.current_symbol, {})
+            required = action_cfg.get('hold_duration', self.logic.default_duration)
             duration = time.time() - self.logic.symbol_start_time
             progress = min(1.0, duration / required)
             

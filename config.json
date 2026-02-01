@@ -38,6 +38,29 @@
             "hold_duration": 2.0,
             "cooldown": 1.0
         },
+        "PEACE": {
+            "type": "keystroke",
+            "command": "enter",
+            "description": "Select / Click",
+            "hold_duration": 0.8,
+            "cooldown": 1.5
+        },
+        "INDEX_LEFT": {
+            "type": "keystroke",
+            "command": "Left",
+            "behavior": "cycle",
+            "description": "Move Left",
+            "hold_duration": 0.5,
+            "cooldown": 0.1
+        },
+        "INDEX_RIGHT": {
+            "type": "keystroke",
+            "command": "Right",
+            "behavior": "cycle",
+            "description": "Move Right",
+            "hold_duration": 0.5,
+            "cooldown": 0.1
+        },
         "HANDS_X": {
             "type": "app",
             "command": "quit",
