@@ -83,21 +83,23 @@ class MediaPipeDetector(BaseDetector):
             
         # 2. FIST vs INDEX_DOWN: All 4 major fingers are closed
         if not any(is_open):
-            # Special check for INDEX_DOWN vs FIST
+            # Special check for INDEX_DOWN vs FIST using distance
+            # Tip (8) vs MCP (5) base
             idx_tip = hand_landmarks.landmark[8]
             idx_pip = hand_landmarks.landmark[6]
             idx_mcp = hand_landmarks.landmark[5]
             
-            # Index is down only if tip [8] is VERY clearly BELOW pip [6]
-            # Increasing threshold from 0.05 to 0.1 for more deliberate pointing
-            if idx_tip.y > idx_pip.y + 0.1:
+            # Calculate 3D Euclidean distance for "extension strength"
+            dist_tip_mcp = ((idx_tip.x - idx_mcp.x)**2 + (idx_tip.y - idx_mcp.y)**2 + (idx_tip.z - idx_mcp.z)**2)**0.5
+            
+            # Index is down only if it's pointing DOWN and is EXTENDED (not curled)
+            if idx_tip.y > idx_pip.y + 0.05 and dist_tip_mcp > 0.08:
                 return "INDEX_DOWN"
             
             # Confirm FIST by checking if index tip is close to MCP (tucked in)
-            if abs(idx_tip.y - idx_mcp.y) < 0.05:
+            if dist_tip_mcp < 0.05:
                 return "FIST"
             
-            # If it's ambiguous, return None to avoid misfiring
             return None
             
         # 3. INDEX_UP / INDEX_LEFT / INDEX_RIGHT: Only index is open
